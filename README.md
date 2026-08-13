@@ -83,7 +83,14 @@ long as the SSO session that issued it (idle/max above).
 - **Why verify JWTs offline?** A per-request round trip to Keycloak would make
   it a bottleneck and single point of failure. Signature verification against
   cached JWKS keys costs microseconds. Tradeoff: revocation lag — mitigated by
-  short token lifetimes (5 min).
+  short token lifetimes (5 min) and **closed by back-channel logout**: when a
+  session ends, Keycloak POSTs a signed logout token to the API, which
+  blacklists the session id — so a still-unexpired token from a logged-out
+  session is rejected immediately (`401 Session has been revoked` + audit).
+- **Why validate the audience?** A signature check only proves Keycloak minted
+  the token — not that it was minted for *this* API. Tokens must carry
+  `secure-portal-api` in `aud` (stamped by a protocol mapper on the SPA
+  client); valid tokens issued to other clients get 401.
 - **401 vs 403:** 401 = "I don't know who you are" (missing/invalid token).
   403 = "I know exactly who you are, and no" (valid token, insufficient role).
 - **Why audit ACCESS_DENIED events?** In regulated environments, failed access

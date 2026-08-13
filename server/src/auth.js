@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 
+import { isSessionRevoked } from "./revocation.js";
+
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://localhost:8080";
 const REALM = process.env.KEYCLOAK_REALM || "secure-portal";
 const ISSUER = `${KEYCLOAK_URL}/realms/${REALM}`;
@@ -9,6 +11,10 @@ const ISSUER = `${KEYCLOAK_URL}/realms/${REALM}`;
 // "api-audience" protocol mapper on the portal-web client (realm-export.json).
 // Tokens minted for OTHER clients in the realm won't carry it → rejected.
 const AUDIENCE = process.env.OIDC_AUDIENCE || "secure-portal-api";
+
+// The SPA's client id — logout tokens (FR-13) are addressed to the CLIENT
+// whose session ended, so their audience is portal-web, not the API's.
+const WEB_CLIENT_ID = process.env.OIDC_WEB_CLIENT_ID || "portal-web";
 
 // ---- OIDC discovery (FR-12) ----
 // Instead of hardcoding the JWKS URL, we resolve endpoints from the issuer's
@@ -96,8 +102,58 @@ export async function authenticate(req, res, next) {
       email: decoded.email,
       roles: decoded.realm_access?.roles || [],
     };
+
+    // FR-13: a signature-valid, unexpired token is still rejected if its
+    // session was ended at the IdP (back-channel logout revoked the sid).
+    // This closes the offline-verification revocation-lag tradeoff.
+    if (isSessionRevoked(decoded.sid)) {
+      audit(req, "SESSION_REVOKED", { sid: decoded.sid });
+      return res.status(401).json({ error: "Session has been revoked" });
+    }
+
     next();
   });
+}
+
+/**
+ * verifyLogoutToken — validates an OIDC Back-Channel Logout token
+ * (https://openid.net/specs/openid-connect-backchannel-1_0.html §2.6):
+ * signature via the same JWKS, issuer, audience = the SPA client, the
+ * back-channel logout `events` claim present, a `sid` to revoke, and no
+ * `nonce` (the spec prohibits it to prevent replaying ID tokens here).
+ * Returns the decoded payload; throws with a reason on any violation.
+ */
+export async function verifyLogoutToken(logoutToken) {
+  const discovery = await getDiscovery();
+  const jwks = getJwksClient(discovery.jwks_uri);
+  const getKey = (header, callback) => {
+    jwks.getSigningKey(header.kid, (err, key) => {
+      if (err) return callback(err);
+      callback(null, key.getPublicKey());
+    });
+  };
+
+  const decoded = await new Promise((resolve, reject) => {
+    jwt.verify(
+      logoutToken,
+      getKey,
+      { issuer: discovery.issuer, audience: WEB_CLIENT_ID, algorithms: ["RS256"] },
+      (err, payload) => (err ? reject(err) : resolve(payload))
+    );
+  });
+
+  const LOGOUT_EVENT = "http://schemas.openid.net/event/backchannel-logout";
+  if (!decoded.events || !(LOGOUT_EVENT in decoded.events)) {
+    throw new Error("Not a logout token: missing backchannel-logout event claim");
+  }
+  if (decoded.nonce) {
+    throw new Error("Logout token must not contain a nonce");
+  }
+  if (!decoded.sid) {
+    throw new Error("Logout token carries no sid");
+  }
+
+  return decoded;
 }
 
 /**
