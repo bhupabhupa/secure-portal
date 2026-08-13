@@ -14,13 +14,12 @@ regulated-industry platforms (pharma, finance).
 
 ## How to run
 ```bash
-# 1. Keycloak (auto-imports realm, clients, roles, demo users)
-docker compose up -d
+# Full stack (Keycloak + API + SPA), one command:
+docker compose up -d --build               # SPA at http://localhost:5173
 
-# 2. API
+# Dev mode (hot reload): only Keycloak in Docker, rest on host
+docker compose up -d keycloak
 cd server && npm install && npm run dev    # http://localhost:4000
-
-# 3. SPA
 cd client && npm install && npm run dev    # http://localhost:5173
 ```
 Demo users: admin / manager+001@kc.local / viewer+001@kc.local (password: `password`)

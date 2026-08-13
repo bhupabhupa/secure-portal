@@ -1,5 +1,19 @@
 version: "3.8"
 
+# Full-stack demo: `docker compose up -d --build` then open http://localhost:5173
+#
+# Networking notes (the non-obvious parts):
+# - KC_HOSTNAME=localhost pins Keycloak's frontend URL, so the issuer inside
+#   tokens is always http://localhost:8080 — whether seen by the browser or by
+#   the API container. Backchannel stays non-strict, so when the API fetches
+#   the discovery document via http://keycloak:8080 it gets a jwks_uri it can
+#   actually reach, while `issuer` still says localhost. Without this, token
+#   verification fails with issuer mismatch.
+# - The back-channel logout URL (in realm-export.json) points at
+#   host.docker.internal:4000, which Docker Desktop resolves to the host —
+#   reaching the API's published port both when the API runs in compose and
+#   when it runs via `npm run dev` on the host.
+
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
@@ -7,11 +21,34 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: localhost
     ports:
       - "8080:8080"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
 
-  # Server and client run locally via npm for easy debugging:
-  #   cd server && npm install && npm run dev   (http://localhost:4000)
-  #   cd client && npm install && npm run dev   (http://localhost:5173)
+  api:
+    build: ./server
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+    ports:
+      - "4000:4000"
+    volumes:
+      - audit-data:/app/data
+    depends_on:
+      - keycloak
+
+  web:
+    build: ./client
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  audit-data:
+
+# Dev mode (hot reload) — run only Keycloak in Docker:
+#   docker compose up -d keycloak
+#   cd server && npm install && npm run dev   (http://localhost:4000)
+#   cd client && npm install && npm run dev   (http://localhost:5173)

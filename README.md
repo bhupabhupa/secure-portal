@@ -38,18 +38,25 @@ locally against Keycloak's published public keys (cached JWKS).
 | manager | ✅ | ✅ | ❌ |
 | admin   | ✅ | ✅ | ✅ |
 
-## Run it
+## Run it — one command
 
 ```bash
-# 1. Start Keycloak (auto-imports realm, clients, roles, demo users)
-docker compose up -d
-
-# 2. Start the API
-cd server && npm install && npm run dev
-
-# 3. Start the SPA
-cd client && npm install && npm run dev
+docker compose up -d --build
 ```
+
+That's the entire stack: Keycloak (with realm, roles, and demo users
+auto-imported), the API, and the SPA. First build takes a few minutes
+(native-module compile); after that it's seconds.
+
+<details>
+<summary>Dev mode (hot reload) instead</summary>
+
+```bash
+docker compose up -d keycloak          # just the IdP
+cd server && npm install && npm run dev    # http://localhost:4000
+cd client && npm install && npm run dev    # http://localhost:5173
+```
+</details>
 
 Open http://localhost:5173 and log in as:
 
@@ -62,6 +69,18 @@ Open http://localhost:5173 and log in as:
 **Try this:** log in as `viewer+001@kc.local`, then call the create-run endpoint
 via curl with that token — you'll get a **403 with an audit log entry**. Hiding the
 button is UX; the server is the security boundary.
+
+## The 2-minute demo script
+
+1. Log in as `viewer+001@kc.local` → only the runs table renders (role-aware UI).
+2. Copy the Bearer token from DevTools → Network, and replay it against
+   `POST /api/runs` via curl → **403 "Requires permission: runs:create"** —
+   the server, not the UI, is the boundary.
+3. Log out, log in as `admin` → **Load audit log** → the viewer's
+   `ACCESS_DENIED` attempt is right there, persisted in SQLite.
+4. Log out while keeping a copy of the admin token, then replay it —
+   **401 "Session has been revoked"**: back-channel logout killed the
+   still-unexpired token the instant the session ended.
 
 ## Token & session lifetimes
 
