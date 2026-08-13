@@ -1,5 +1,7 @@
 # Secure Portal — Keycloak SSO + RBAC Demo
 
+![CI](https://github.com/bhupabhupa/secure-portal/actions/workflows/ci.yml/badge.svg)
+
 A minimal but production-shaped example of enterprise authentication:
 **React SPA + Node/Express API secured by Keycloak** (OpenID Connect), with
 role-based access control enforced on the server and reflected in the UI.
@@ -122,6 +124,19 @@ long as the SSO session that issued it (idle/max above).
   one-line config change — no route code touched. At larger scale that table
   moves to a database or a policy engine (OPA, Keycloak authorization
   services); the shape stays the same.
+
+## Tests
+
+```bash
+cd server && npm test
+```
+
+14 tests cover the Test Plan in `docs/SPEC.md` (T-1..T-7) — auth failures,
+audience validation, RBAC denials + audit rows, config-driven grants,
+SQLite persistence, and the full back-channel-logout revocation flow.
+No Keycloak required: a ~30-line fake IdP serves a discovery document and a
+JWKS built from a locally generated RSA key, and tokens are signed with its
+private half — the API trusts the protocol, not a particular server.
 
 ## Production hardening checklist (not in this demo)
 

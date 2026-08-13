@@ -14,11 +14,14 @@ export const ROLE_PERMISSIONS = {
   admin: ["runs:read", "runs:create", "audit:read"],
 };
 
-/** Union of permissions granted by a set of realm roles. */
-export function permissionsForRoles(roles = []) {
+/**
+ * Union of permissions granted by a set of realm roles.
+ * `map` is injectable so tests can prove grants flip with config alone (T-3).
+ */
+export function permissionsForRoles(roles = [], map = ROLE_PERMISSIONS) {
   const permissions = new Set();
   for (const role of roles) {
-    for (const permission of ROLE_PERMISSIONS[role] || []) {
+    for (const permission of map[role] || []) {
       permissions.add(permission);
     }
   }
