@@ -20,7 +20,7 @@ Tracks FR status against docs/SPEC.md. Update after every change.
       user logout does not send OIDC backchannel logout tokens in this setup —
       admin revocation propagates via not-before policy / token expiry instead.
 - [x] FR-8: Permission layer (roles → permissions) → server/src/permissions.js (new), server/src/auth.js (requirePermission replaces requireRole), server/src/index.js
-- [ ] FR-9: Persistent audit (SQLite) → server/src/audit-store.js (new, better-sqlite3), GET /api/audit filters
+- [x] FR-9: Persistent audit (SQLite) → server/src/audit-store.js (new, better-sqlite3), GET /api/audit?user=&action=&from=&to=&limit=
 - [ ] FR-11: Tests per Test Plan (T-1..T-7) → server/__tests__/, local RSA-signed JWTs + stubbed JWKS/discovery
 - [ ] FR-10 (optional): Admin user panel via Keycloak Admin API → new confidential service-account client in realm-export.json, server endpoint, client page
 

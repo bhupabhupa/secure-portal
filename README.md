@@ -104,7 +104,6 @@ long as the SSO session that issued it (idle/max above).
 
 ## Production hardening checklist (not in this demo)
 
-- Persist the audit log to an append-only store
 - `start` (not `start-dev`) Keycloak behind TLS with a real database
 - Confidential client + backend-for-frontend pattern for the most sensitive apps
 - Rate limiting, security headers (helmet), CSP

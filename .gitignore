@@ -5,6 +5,9 @@ node_modules/
 dist/
 .vite/
 
+# Runtime data (SQLite audit DB)
+server/data/
+
 # Environment & secrets — never commit real config
 .env
 .env.local

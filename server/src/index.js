@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
-import { authenticate, requirePermission, audit, auditLog, verifyLogoutToken } from "./auth.js";
+import { authenticate, requirePermission, audit, verifyLogoutToken } from "./auth.js";
 import { revokeSession } from "./revocation.js";
+import { queryAudit } from "./audit-store.js";
 
 const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));
@@ -69,9 +70,11 @@ app.post("/api/runs", authenticate, requirePermission("runs:create"), (req, res)
 });
 
 // ---- requires audit:read (granted to admin via permissions.js) ----
+// Filters (all optional): ?user=&action=&from=&to=&limit=  (ISO timestamps)
 app.get("/api/audit", authenticate, requirePermission("audit:read"), (req, res) => {
-  audit(req, "VIEW_AUDIT_LOG");
-  res.json(auditLog);
+  audit(req, "VIEW_AUDIT_LOG", { filters: req.query });
+  const { user, action, from, to, limit } = req.query;
+  res.json(queryAudit({ user, action, from, to, limit }));
 });
 
 const PORT = process.env.PORT || 4000;

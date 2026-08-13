@@ -3,6 +3,7 @@ import jwksClient from "jwks-rsa";
 
 import { isSessionRevoked } from "./revocation.js";
 import { permissionsForRoles } from "./permissions.js";
+import { appendAudit } from "./audit-store.js";
 
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://localhost:8080";
 const REALM = process.env.KEYCLOAK_REALM || "secure-portal";
@@ -180,12 +181,11 @@ export function requirePermission(permission) {
 }
 
 /**
- * audit — append-only audit log (in-memory for demo; DB table in production).
+ * audit — append-only audit log, persisted to SQLite (FR-9).
  * The habit of logging who-did-what-when comes from regulated pharma software.
  */
-export const auditLog = [];
 export function audit(req, action, extra = {}) {
-  auditLog.push({
+  appendAudit({
     ts: new Date().toISOString(),
     user: req.user?.username || "anonymous",
     action,
