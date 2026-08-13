@@ -8,6 +8,8 @@ Built as a demonstration of the auth patterns used in regulated-industry
 platforms (pharma, finance): short-lived tokens, offline JWT verification,
 server-side RBAC, and an append-only audit log.
 
+![Demo: viewer sees only what their role permits; admin sees the audit trail — including the viewer's activity and back-channel logout events](docs/demo.gif)
+
 ## Architecture
 
 ```
