@@ -1,0 +1,63 @@
+{
+  "realm": "secure-portal",
+  "enabled": true,
+  "registrationAllowed": false,
+
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "Full access: manage users, view audit log" },
+      { "name": "manager", "description": "Manage lab runs, view reports" },
+      { "name": "viewer", "description": "Read-only access to dashboards" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "portal-web",
+      "name": "Secure Portal SPA",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@kc.local",
+      "firstName": "Admin",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["admin", "manager", "viewer"]
+    },
+    {
+      "username": "manager+001@kc.local",
+      "email": "manager+001@kc.local",
+      "firstName": "Manager",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["manager", "viewer"]
+    },
+    {
+      "username": "viewer+001@kc.local",
+      "email": "viewer+001@kc.local",
+      "firstName": "Viewer",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["viewer"]
+    }
+  ]
+}

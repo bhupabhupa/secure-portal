@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+
+  # Server and client run locally via npm for easy debugging:
+  #   cd server && npm install && npm run dev   (http://localhost:4000)
+  #   cd client && npm install && npm run dev   (http://localhost:5173)
