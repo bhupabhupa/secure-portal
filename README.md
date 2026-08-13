@@ -95,10 +95,12 @@ long as the SSO session that issued it (idle/max above).
   403 = "I know exactly who you are, and no" (valid token, insufficient role).
 - **Why audit ACCESS_DENIED events?** In regulated environments, failed access
   attempts are as important as successful ones — they're the security signal.
-- **Roles vs permissions:** this demo maps roles → endpoints directly. At
-  scale you'd insert a permission layer (role → permissions → endpoints) so
-  new roles don't require code changes; Keycloak's authorization services or
-  a policy engine (OPA) handle that.
+- **Roles vs permissions:** endpoints declare the *permission* they need
+  (`runs:create`), never a role; `server/src/permissions.js` is the single
+  place roles map to permissions. Granting or revoking a capability is a
+  one-line config change — no route code touched. At larger scale that table
+  moves to a database or a policy engine (OPA, Keycloak authorization
+  services); the shape stays the same.
 
 ## Production hardening checklist (not in this demo)
 

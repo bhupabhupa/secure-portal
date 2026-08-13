@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { authenticate, requireRole, audit, auditLog, verifyLogoutToken } from "./auth.js";
+import { authenticate, requirePermission, audit, auditLog, verifyLogoutToken } from "./auth.js";
 import { revokeSession } from "./revocation.js";
 
 const app = express();
@@ -50,13 +50,13 @@ app.get("/api/me", authenticate, (req, res) => {
   res.json(req.user);
 });
 
-app.get("/api/runs", authenticate, requireRole("viewer", "manager", "admin"), (req, res) => {
+app.get("/api/runs", authenticate, requirePermission("runs:read"), (req, res) => {
   audit(req, "LIST_RUNS");
   res.json(labRuns);
 });
 
-// ---- manager + admin ----
-app.post("/api/runs", authenticate, requireRole("manager", "admin"), (req, res) => {
+// ---- requires runs:create (granted to manager, admin via permissions.js) ----
+app.post("/api/runs", authenticate, requirePermission("runs:create"), (req, res) => {
   const run = {
     id: labRuns.length + 1,
     instrument: req.body.instrument || "UNKNOWN",
@@ -68,8 +68,8 @@ app.post("/api/runs", authenticate, requireRole("manager", "admin"), (req, res) 
   res.status(201).json(run);
 });
 
-// ---- admin only ----
-app.get("/api/audit", authenticate, requireRole("admin"), (req, res) => {
+// ---- requires audit:read (granted to admin via permissions.js) ----
+app.get("/api/audit", authenticate, requirePermission("audit:read"), (req, res) => {
   audit(req, "VIEW_AUDIT_LOG");
   res.json(auditLog);
 });

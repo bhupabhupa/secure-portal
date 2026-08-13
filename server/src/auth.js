@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 
 import { isSessionRevoked } from "./revocation.js";
+import { permissionsForRoles } from "./permissions.js";
 
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://localhost:8080";
 const REALM = process.env.KEYCLOAK_REALM || "secure-portal";
@@ -96,11 +97,15 @@ export async function authenticate(req, res, next) {
     if (err) {
       return res.status(401).json({ error: "Invalid or expired token", detail: err.message });
     }
+    const roles = decoded.realm_access?.roles || [];
     req.user = {
       sub: decoded.sub,
       username: decoded.preferred_username,
       email: decoded.email,
-      roles: decoded.realm_access?.roles || [],
+      roles,
+      // FR-8: permissions resolved once per request from the role→permission
+      // config; everything downstream checks these, never roles.
+      permissions: permissionsForRoles(roles),
     };
 
     // FR-13: a signature-valid, unexpired token is still rejected if its
@@ -157,16 +162,18 @@ export async function verifyLogoutToken(logoutToken) {
 }
 
 /**
- * requireRole — RBAC guard. Usage: app.get("/x", authenticate, requireRole("admin"), handler)
+ * requirePermission — authorization guard (FR-8). Usage:
+ *   app.post("/api/runs", authenticate, requirePermission("runs:create"), handler)
+ * Endpoints name the capability they need; which roles grant it is decided
+ * in permissions.js, not here.
  * 401 = we don't know who you are. 403 = we know you, and you're not allowed.
  */
-export function requireRole(...allowed) {
+export function requirePermission(permission) {
   return (req, res, next) => {
-    const roles = req.user?.roles || [];
-    const ok = allowed.some((r) => roles.includes(r));
-    if (!ok) {
-      audit(req, "ACCESS_DENIED", { required: allowed });
-      return res.status(403).json({ error: `Requires role: ${allowed.join(" or ")}` });
+    const granted = req.user?.permissions || [];
+    if (!granted.includes(permission)) {
+      audit(req, "ACCESS_DENIED", { required: permission });
+      return res.status(403).json({ error: `Requires permission: ${permission}` });
     }
     next();
   };
