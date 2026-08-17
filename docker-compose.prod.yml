@@ -3,7 +3,8 @@
 # external "web" network. No ports published on the host.
 #
 # Requires a .env next to this file:
-#   DEMO_DOMAIN=<ip-with-dashes>.nip.io    (or your real domain)
+#   DEMO_DOMAIN=<ip-with-dashes>.nip.io    (or your real domain; "localhost" for a local dry-run)
+#   DEMO_SCHEME=https                      (default; "http" for the local dry-run)
 #   KC_DB_PASSWORD=<random>
 #   KEYCLOAK_ADMIN_PASSWORD=<strong — this console is on the internet>
 #
@@ -32,8 +33,10 @@ services:
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
-      KC_HOSTNAME: auth.${DEMO_DOMAIN}
-      KC_HTTP_ENABLED: "true"          # TLS terminates at Caddy
+      # Full URL pins scheme + host in issuer/redirects (https in prod,
+      # http for the local dry-run) — TLS terminates at Caddy either way.
+      KC_HOSTNAME_URL: ${DEMO_SCHEME:-https}://auth.${DEMO_DOMAIN}
+      KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
     volumes:
       - ./keycloak/realm-export.prod.json:/opt/keycloak/data/import/realm-export.json:ro
@@ -58,7 +61,7 @@ services:
     build:
       context: ./client
       args:
-        VITE_AUTH_URL: https://auth.${DEMO_DOMAIN}
+        VITE_AUTH_URL: ${DEMO_SCHEME:-https}://auth.${DEMO_DOMAIN}
         VITE_API_URL: ""
     networks: [default, web]
 
