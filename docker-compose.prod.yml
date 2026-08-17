@@ -1,0 +1,71 @@
+# Production deployment: Keycloak in PRODUCTION mode (start, not start-dev)
+# backed by Postgres, TLS terminated at the reverse proxy (Caddy) on the
+# external "web" network. No ports published on the host.
+#
+# Requires a .env next to this file:
+#   DEMO_DOMAIN=<ip-with-dashes>.nip.io    (or your real domain)
+#   KC_DB_PASSWORD=<random>
+#   KEYCLOAK_ADMIN_PASSWORD=<strong — this console is on the internet>
+#
+# Render the prod realm first:  ./scripts/render-prod-realm.sh
+# Then:                         docker compose -f docker-compose.prod.yml up -d --build
+#
+# (Local development keeps using plain docker-compose.yml — unchanged.)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+    volumes:
+      - keycloak-db:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME: auth.${DEMO_DOMAIN}
+      KC_HTTP_ENABLED: "true"          # TLS terminates at Caddy
+      KC_PROXY_HEADERS: xforwarded
+    volumes:
+      - ./keycloak/realm-export.prod.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      - postgres
+    networks: [default, web]
+
+  portal-api:
+    build: ./server
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      # discovery still reports issuer https://auth.<domain> (KC_HOSTNAME),
+      # while jwks stays reachable via the internal hostname — same pattern
+      # as local compose, now with real TLS in front.
+    volumes:
+      - portal-audit:/app/data
+    depends_on:
+      - keycloak
+    networks: [default, web]
+
+  portal-web:
+    build:
+      context: ./client
+      args:
+        VITE_AUTH_URL: https://auth.${DEMO_DOMAIN}
+        VITE_API_URL: ""
+    networks: [default, web]
+
+networks:
+  web:
+    external: true
+
+volumes:
+  keycloak-db:
+  portal-audit:

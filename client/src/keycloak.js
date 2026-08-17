@@ -3,7 +3,8 @@ import Keycloak from "keycloak-js";
 // Public SPA client — secured with Authorization Code Flow + PKCE.
 // No client secret in the browser, ever.
 export const keycloak = new Keycloak({
-  url: "http://localhost:8080",
+  // Dev default; production builds set VITE_AUTH_URL to the public IdP URL.
+  url: import.meta.env.VITE_AUTH_URL || "http://localhost:8080",
   realm: "secure-portal",
   clientId: "portal-web",
 });
